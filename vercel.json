@@ -1,0 +1,22 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/payment",            "destination": "/index.html" },
+    { "source": "/payment/:path*",     "destination": "/index.html" },
+    { "source": "/sell/payment",       "destination": "/index.html" },
+    { "source": "/sell/payment/:path*","destination": "/index.html" },
+    { "source": "/pay",                "destination": "/index.html" },
+    { "source": "/(.*)",               "destination": "https://www.cashify.in/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options",        "value": "SAMEORIGIN" }
+      ]
+    }
+  ]
+}
