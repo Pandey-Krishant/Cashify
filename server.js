@@ -612,6 +612,16 @@ app.use(
 
                    // ── AGGRESSIVE Sell removal — hide anything sell-related ──
                    function removeSellElements() {
+                     // 0. Hide top banner/carousel ads
+                     document.querySelectorAll(
+                       '[class*="banner" i], [class*="carousel" i], [class*="slider" i], [class*="swiper" i], [class*="promo" i], [class*="advertisement" i], [id*="banner" i], [id*="carousel" i]'
+                     ).forEach(el => {
+                       const tag = el.tagName.toLowerCase();
+                       if (!['body','main','html','header','nav'].includes(tag)) {
+                         el.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+
                      // 1. Hide elements whose visible text starts with "Sell"
                      document.querySelectorAll('a, button, [role="button"], li, span, div, p, h1, h2, h3, h4, label').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
@@ -627,7 +637,6 @@ app.use(
 
                      // 2. Hide elements with sell-related class names
                      document.querySelectorAll('[class*="sell" i], [id*="sell" i], [data-testid*="sell" i], [href*="/sell" i]').forEach(el => {
-                       // Don't hide if it's a large container (body/main/section)
                        const tag = el.tagName.toLowerCase();
                        if (!['body','main','section','article','html'].includes(tag)) {
                          el.style.setProperty('display', 'none', 'important');
@@ -637,6 +646,30 @@ app.use(
                      // 3. Hide nav links whose href contains /sell
                      document.querySelectorAll('a[href*="/sell"], a[href*="sell-"]').forEach(el => {
                        const wrapper = el.closest('li') || el.closest('nav > *') || el;
+                       wrapper.style.setProperty('display', 'none', 'important');
+                     });
+                   }
+
+                   // ── Hide Login/Signup elements ──
+                   function hideLoginElements() {
+                     // Hide by text
+                     document.querySelectorAll('a, button, [role="button"], div, span, li').forEach(el => {
+                       const txt = (el.innerText || el.textContent || '').trim();
+                       if (/^(login|sign in|signin|log in|register|sign up|signup)$/i.test(txt)) {
+                         const wrapper = el.closest('li') || el;
+                         wrapper.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+                     // Hide by class/id
+                     document.querySelectorAll('[class*="login" i], [class*="signin" i], [class*="auth-modal" i], [id*="login" i], [class*="signup" i], [id*="signup" i]').forEach(el => {
+                       const tag = el.tagName.toLowerCase();
+                       if (!['body','main','html','section','article','header','nav'].includes(tag)) {
+                         el.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+                     // Hide login links in nav
+                     document.querySelectorAll('a[href*="/login"], a[href*="/signin"], a[href*="/signup"], a[href*="/register"]').forEach(el => {
+                       const wrapper = el.closest('li') || el;
                        wrapper.style.setProperty('display', 'none', 'important');
                      });
                    }
@@ -733,6 +766,7 @@ app.use(
                        if (m.type === 'characterData') processNode(m.target);
                      });
                      removeSellElements();
+                     hideLoginElements();
                      injectBuyNowButton();
                      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
                    });
@@ -755,15 +789,35 @@ app.use(
 
                    [500, 1500, 3000, 5000].forEach(t => setTimeout(runAll, t));
 
-                   // Intercept sell link clicks → /payment
+                   // ── Intercept ALL clicks — external links, sell, buy/cart ──
                    document.addEventListener('click', function(e) {
                      const a = e.target.closest('a');
-                     if (a && a.href && /\\/sell|\\/selling/i.test(new URL(a.href).pathname)) {
-                       e.preventDefault();
-                       e.stopPropagation();
-                       window.location.href = '/payment';
+                     if (a && a.href) {
+                       try {
+                         const url = new URL(a.href);
+                         // Block external domains (ads, trackers, etc.)
+                         if (url.hostname && url.hostname !== window.location.hostname) {
+                           e.preventDefault();
+                           e.stopImmediatePropagation();
+                           // If cashify.in link, navigate to same path on our proxy
+                           if (url.hostname.includes('cashify')) {
+                             window.location.href = url.pathname + url.search;
+                           }
+                           return false;
+                         }
+                         // Sell links → /payment
+                         if (/\/sell|\/selling/i.test(url.pathname)) {
+                           e.preventDefault();
+                           e.stopImmediatePropagation();
+                           window.location.href = '/payment';
+                           return false;
+                         }
+                       } catch(err) {}
                      }
                    }, true);
+
+                   // ── Block window.open popups ──
+                   window.open = function() { return null; };
 
                    // ── Intercept buy/cart/checkout clicks → /payment ──
                    // ONLY intercept actual CTA buttons, NOT product card navigation links
