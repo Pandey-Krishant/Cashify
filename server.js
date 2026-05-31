@@ -938,11 +938,11 @@ app.use(
 
                    // ── Run everything ──
                    function runAll() {
-                     // Only process prices once on initial load, not on every mutation
                      removeSellElements();
                      hideLoginElements();
                      injectBuyNowButton();
                      savePagePrice();
+                     forceLoadImages();
                    }
 
                    // First load: process prices once
@@ -962,6 +962,7 @@ app.use(
                      });
                      removeSellElements();
                      injectBuyNowButton();
+                     forceLoadImages();
                      observer.observe(document.body, { childList: true, subtree: true });
                    });
 
@@ -980,9 +981,43 @@ app.use(
                      }
                    }).observe(document, { subtree: true, childList: true });
 
-                   [500, 1500].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); savePagePrice(); }, t));
+                   [500, 1500, 3000].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); savePagePrice(); forceLoadImages(); }, t));
 
-                   // ── Save current page price to sessionStorage continuously ──
+                   // ── Force load all lazy images ──
+                   function forceLoadImages() {
+                     document.querySelectorAll('img').forEach(img => {
+                       // Fix relative src
+                       if (img.src && img.src.startsWith(window.location.origin) && !img.src.includes('cashify.in')) {
+                         const path = img.getAttribute('src');
+                         if (path && path.startsWith('/') && !path.startsWith('//')) {
+                           img.src = 'https://www.cashify.in' + path;
+                         }
+                       }
+                       // Lazy load: copy data-src / data-lazy / data-original to src
+                       const lazySrc = img.getAttribute('data-src') ||
+                                       img.getAttribute('data-lazy') ||
+                                       img.getAttribute('data-original') ||
+                                       img.getAttribute('data-lazy-src') ||
+                                       img.getAttribute('data-img');
+                       if (lazySrc && (!img.src || img.src === window.location.href || img.naturalWidth === 0)) {
+                         const abs = lazySrc.startsWith('/') ? 'https://www.cashify.in' + lazySrc : lazySrc;
+                         img.src = abs;
+                         img.removeAttribute('data-src');
+                         img.removeAttribute('data-lazy');
+                       }
+                       // Fix srcset too
+                       const lazySrcset = img.getAttribute('data-srcset');
+                       if (lazySrcset) {
+                         img.srcset = lazySrcset;
+                         img.removeAttribute('data-srcset');
+                       }
+                     });
+                     // Also handle picture > source elements
+                     document.querySelectorAll('source').forEach(src => {
+                       const lazy = src.getAttribute('data-srcset') || src.getAttribute('data-src');
+                       if (lazy) { src.srcset = lazy; }
+                     });
+                   }
                    function savePagePrice() {
                      const spans = document.querySelectorAll('span, p, strong, b, h1, h2, h3');
                      for (const s of spans) {
