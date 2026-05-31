@@ -415,33 +415,40 @@ app.use("/payment", (req, res) => {
                 <!-- Apps row — clickable UPI deep links -->
                 <p class="text-xs text-center text-gray-400 mb-2">Pay directly via app</p>
                 <div class="flex justify-center gap-3 mb-5" id="upi-apps-row">
-                  <a id="link-phonepe" href="#" onclick="openUPI('phonepe');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-gray-100 p-1">
-                      <img src="https://www.phonepe.com/webstatic/static/media/PhonePe_Logo.decb87ed.png" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.png/240px-PhonePe_Logo.png'">
+                  <a href="#" onclick="openUPI('phonepe');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl shadow-md flex items-center justify-center border border-gray-100 overflow-hidden" style="background:#5f259f">
+                      <svg viewBox="0 0 48 48" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="48" height="48" rx="10" fill="#5f259f"/>
+                        <text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="Arial">Phone</text>
+                        <text x="50%" y="78%" dominant-baseline="middle" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="Arial">Pe</text>
+                      </svg>
                     </div>
                     <span class="text-[10px] font-semibold text-purple-600">PhonePe</span>
                   </a>
-                  <a id="link-gpay" href="#" onclick="openUPI('gpay');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-gray-100 p-1">
-                      <img src="https://pay.google.com/about/static/images/social/og_image.jpg" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/240px-Google_Pay_Logo.svg.png'">
+                  <a href="#" onclick="openUPI('gpay');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl shadow-md flex items-center justify-center border border-gray-100 overflow-hidden bg-white p-1">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png" class="w-full h-full object-contain">
                     </div>
                     <span class="text-[10px] font-semibold text-blue-600">GPay</span>
                   </a>
-                  <a id="link-paytm" href="#" onclick="openUPI('paytm');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-gray-100 p-1">
-                      <img src="https://staticimg.paytm.com/Paytm_web/favicon/favicon-32x32.png" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/240px-Paytm_Logo_%28standalone%29.svg.png'">
+                  <a href="#" onclick="openUPI('paytm');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl shadow-md flex items-center justify-center border border-gray-100 overflow-hidden" style="background:#00b9f1">
+                      <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="48" height="48" rx="10" fill="#00b9f1"/>
+                        <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="13" font-weight="900" font-family="Arial">Paytm</text>
+                      </svg>
                     </div>
                     <span class="text-[10px] font-semibold text-blue-500">Paytm</span>
                   </a>
-                  <a id="link-bhim" href="#" onclick="openUPI('bhim');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-gray-100 p-1">
-                      <img src="https://www.bhimupi.org.in/sites/default/files/BHIM%20Logo.png" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/BHIM_logo.png/240px-BHIM_logo.png'">
+                  <a href="#" onclick="openUPI('bhim');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl shadow-md flex items-center justify-center border border-gray-100 overflow-hidden bg-white p-1">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/BHIM_logo.png/480px-BHIM_logo.png" class="w-full h-full object-contain">
                     </div>
                     <span class="text-[10px] font-semibold text-orange-600">BHIM</span>
                   </a>
-                  <a id="link-upi" href="#" onclick="openUPI('upi');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-gray-100 p-1">
-                      <img src="https://www.npci.org.in/images/npci/upi-logo.png" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/240px-UPI-Logo-vector.svg.png'">
+                  <a href="#" onclick="openUPI('upi');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl shadow-md flex items-center justify-center border border-gray-100 overflow-hidden bg-white p-1">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/480px-UPI-Logo-vector.svg.png" class="w-full h-full object-contain">
                     </div>
                     <span class="text-[10px] font-semibold text-gray-600">Any UPI</span>
                   </a>
