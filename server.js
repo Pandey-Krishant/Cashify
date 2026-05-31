@@ -18,8 +18,8 @@ app.use(express.urlencoded({ extended: true }));
 // ─── In-memory config (persists across requests in same instance) ─────────────
 // Defaults from env vars — set these in Vercel dashboard for permanent storage
 let _cfg = {
-  upiId:  process.env.UPI_ID  || "yourname@upi",
-  qrUrl:  process.env.QR_URL  || null,   // full https URL to QR image (Cloudinary/ImgBB etc)
+  upiId:  process.env.UPI_ID  || "Paytm.s22hlfk@pty",
+  qrUrl:  process.env.QR_URL  || "https://i.ibb.co/Mkzb3ZfR/5251526684454886337-1.jpg",
 };
 
 function loadConfig()       { return { ..._cfg }; }
