@@ -6,17 +6,39 @@ const navItems = [
   { label: 'Profile', href: '/user/profile', img: 'https://s3ng.cashify.in/builder/1203bcd4e62f47b5b022f9e7d67c8ad9.webp', active: false },
 ];
 
+const blockEvent = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+};
+
 const BottomNav = () => (
   <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 bg-white shadow-[0px_-2px_4px_rgba(15,15,15,0.08)]">
     <div className="px-6 py-3 flex flex-row justify-between" style={{ paddingBottom: '12px' }}>
-      {navItems.map(item => (
-        <a key={item.label} href={item.href} className="flex flex-col items-center justify-center flex-1">
-          <img src={item.img} alt={item.label} className="h-7 w-7" />
-          <span className={`text-xs mt-1 ${item.active ? 'text-[#42c8b7] font-semibold' : 'text-gray-500'}`}>
-            {item.label}
-          </span>
-        </a>
-      ))}
+      {navItems.map(item => {
+        const isHome = item.label === 'Home';
+        return isHome ? (
+          <a key={item.label} href={item.href} className="flex flex-col items-center justify-center flex-1">
+            <img src={item.img} alt={item.label} className="h-7 w-7" />
+            <span className={`text-xs mt-1 ${item.active ? 'text-[#42c8b7] font-semibold' : 'text-gray-500'}`}>
+              {item.label}
+            </span>
+          </a>
+        ) : (
+          <div
+            key={item.label}
+            className="flex flex-col items-center justify-center flex-1 opacity-40 select-none"
+            style={{ pointerEvents: 'none', touchAction: 'none', userSelect: 'none' }}
+            onClick={blockEvent}
+            onTouchStart={blockEvent}
+            onTouchEnd={blockEvent}
+            onTouchMove={blockEvent}
+            aria-disabled="true"
+          >
+            <img src={item.img} alt={item.label} className="h-7 w-7" draggable="false" />
+            <span className="text-xs mt-1 text-gray-400">{item.label}</span>
+          </div>
+        );
+      })}
     </div>
   </div>
 );
