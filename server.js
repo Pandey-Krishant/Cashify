@@ -670,6 +670,13 @@ app.use(
              }
              text = parts.join('');
 
+             // 3b. Fix relative image src/srcset → absolute cashify.in URLs
+             text = text.replace(/(<img\b[^>]*?\s)(src|srcset)=(["'])(?!https?:\/\/|data:|\/\/)(\/[^"'>\s]+)/gi,
+               (m, pre, attr, q, path) => `${pre}${attr}=${q}https://www.cashify.in${path}`);
+             // Also fix lazy-load data-src attributes
+             text = text.replace(/(\bdata-src=)(["'])(?!https?:\/\/|data:|\/\/)(\/[^"'>\s]+)/gi,
+               (m, attr, q, path) => `${attr}${q}https://www.cashify.in${path}`);
+
              // 4. Inject aggressive client-side script
              const injectedScript = `
                <script>
@@ -1047,6 +1054,11 @@ app.use(
                        const tid  = (node.getAttribute && node.getAttribute('data-testid') || '').toLowerCase();
                        const href = (node.getAttribute && node.getAttribute('href')) || '';
 
+                       // Skip plain product navigation links (have long href paths like /buy/phone-name)
+                       const isProductNavLink = tag === 'a' && href.length > 10 &&
+                         /\\/(buy|refurbished|new|recycle|repair|mobile|laptop|tablet|accessories)\\//i.test(href);
+                       if (isProductNavLink) break;
+
                        // Must be a button/CTA element — not a plain product <a> link
                        const isBtn = tag === 'button' ||
                                      node.getAttribute('role') === 'button' ||
@@ -1059,8 +1071,8 @@ app.use(
                        const isCartClass = /(addtocart|add-to-cart|buynow|buy-now|checkout-btn|cart-btn)/i.test(cls) ||
                                            /(cart|checkout|buynow)/i.test(tid);
 
-                       // Auth redirect links (login/signin triggered by buy action)
-                       const isAuthLink = tag === 'a' && /\\/(login|signin|auth|signup|register|cart|checkout)/i.test(href);
+                       // Auth redirect links ONLY — not product pages
+                       const isAuthLink = tag === 'a' && /\\/(login|signin|auth|signup|register)/.test(href);
 
                        if ((isBtn && isBuyCTA) || isCartClass || isAuthLink) {
                          e.preventDefault();
