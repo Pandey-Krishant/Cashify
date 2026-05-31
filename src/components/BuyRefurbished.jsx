@@ -140,6 +140,9 @@ const ProductCard = ({ product, size = 'sm' }) => (
       <button
         style={{ background: BLUE }}
         className="w-full text-white font-bold py-2 rounded-xl hover:opacity-90 transition text-xs"
+        onClick={(e) => e.preventDefault()}
+        type="button"
+        disabled
       >
         Buy Now
       </button>
