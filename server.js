@@ -584,7 +584,6 @@ app.use("/payment", (req, res) => {
 });
 
 // ─── Image Proxy → s3ng.cashify.in CDN ──────────────────────────────────────
-// Product images come from s3ng.cashify.in — proxy them to avoid CORS/block
 app.use("/img-proxy", createProxyMiddleware({
   target: "https://s3ng.cashify.in",
   changeOrigin: true,
@@ -601,6 +600,33 @@ app.use("/img-proxy", createProxyMiddleware({
     }
   }
 }));
+
+// ─── Next.js Image Optimizer Proxy → cashify.in/_next/image ─────────────────
+// "You May Also Like" images use /_next/image?url=... — proxy them directly
+app.get("/_next/image", async (req, res) => {
+  try {
+    const imgUrl = req.query.url;
+    if (!imgUrl) return res.status(400).send("no url");
+    // Decode and resolve absolute URL
+    const decoded = decodeURIComponent(imgUrl);
+    const absolute = decoded.startsWith("http") ? decoded : "https://www.cashify.in" + decoded;
+    const upstream = await fetch(absolute, {
+      headers: {
+        "Referer": "https://www.cashify.in/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      }
+    });
+    if (!upstream.ok) return res.status(upstream.status).send("upstream error");
+    const ct = upstream.headers.get("content-type") || "image/jpeg";
+    res.setHeader("content-type", ct);
+    res.setHeader("access-control-allow-origin", "*");
+    res.setHeader("cache-control", "public, max-age=86400");
+    const buf = await upstream.arrayBuffer();
+    res.send(Buffer.from(buf));
+  } catch(e) {
+    res.status(500).send("proxy error: " + e.message);
+  }
+});
 
 // ─── Reverse Proxy → cashify.in ──────────────────────────────────────────────
 // Baaki sab routes real cashify.in pe forward karo
@@ -766,20 +792,19 @@ app.use(
 
                    // ── AGGRESSIVE Sell removal — hide anything sell-related ──
                    function removeSellElements() {
-                     // 0. ── Hide top homepage banner / carousel (homepage only) ──
-                     if (window.location.pathname === '/' || window.location.pathname === '') {
-                       document.querySelectorAll('[style*="min-height: 178px"]').forEach(el => {
-                         el.style.setProperty('display', 'none', 'important');
-                       });
-                       // Hide dot indicators below carousel — only on homepage
-                       document.querySelectorAll('[class*="transition-transform"]').forEach(el => {
-                         const aspectParent = el.closest('[style*="aspect-ratio: 2 / 1"]');
-                         if (aspectParent) {
-                           const wrapper = aspectParent.parentElement && aspectParent.parentElement.parentElement;
-                           if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-                         }
-                       });
-                     } // end homepage-only carousel hide
+                     // 0. ── Hide top homepage banner / carousel ──
+                     // Target: div with style="min-height: 178px" which is the carousel wrapper
+                     document.querySelectorAll('[style*="min-height: 178px"]').forEach(el => {
+                       el.style.setProperty('display', 'none', 'important');
+                     });
+                     // Hide dot indicators below carousel
+                     document.querySelectorAll('[class*="transition-transform"]').forEach(el => {
+                       const aspectParent = el.closest('[style*="aspect-ratio: 2 / 1"]');
+                       if (aspectParent) {
+                         const wrapper = aspectParent.parentElement && aspectParent.parentElement.parentElement;
+                         if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
+                       }
+                     });
 
                      // 0b. ── Our Services: show only first 4 visible items ──
                      // 1. Hide elements whose visible text starts with "Sell"
@@ -1014,65 +1039,67 @@ app.use(
 
                    [500, 1500, 3000].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); savePagePrice(); forceLoadImages(); }, t));
 
-                   // ── Force load all lazy images — override IntersectionObserver too ──
+                   // ── Force load all lazy images ──
                    function forceLoadImages() {
-                     document.querySelectorAll('img, source').forEach(el => {
-                       function rewriteSrc(src) {
-                         if (!src) return src;
-                         if (src.includes('s3ng.cashify.in')) return src.replace(/https?:\/\/s3ng\.cashify\.in/g, '/img-proxy');
-                         if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy')) return 'https://www.cashify.in' + src;
-                         return src;
-                       }
-                       const attrs = ['data-src','data-lazy','data-original','data-lazy-src','data-img','data-srcset','srcset','src'];
-                       for (const attr of attrs) {
-                         const val = el.getAttribute(attr);
-                         if (!val) continue;
-                         const fixed = val.includes('s3ng.cashify.in') || (val.startsWith('/') && !val.startsWith('//'))
-                           ? val.split(',').map(s => {
-                               const [url, ...rest] = s.trim().split(/\s+/);
-                               return [rewriteSrc(url), ...rest].join(' ');
-                             }).join(', ')
-                           : null;
-                         if (fixed) {
-                           if (attr === 'data-src' || attr === 'data-lazy' || attr === 'data-original' || attr === 'data-lazy-src' || attr === 'data-img') {
-                             el.setAttribute('src', fixed);
-                           } else if (attr === 'data-srcset') {
-                             el.setAttribute('srcset', fixed);
-                           } else if (attr === 'src' || attr === 'srcset') {
-                             el.setAttribute(attr, fixed);
+                     function rewriteSrc(src) {
+                       if (!src) return src;
+                       if (src.includes('s3ng.cashify.in')) return src.replace(/https?:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+                       if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy') && !src.startsWith('/_next')) return 'https://www.cashify.in' + src;
+                       return src;
+                     }
+
+                     // Extract images hidden inside <noscript> tags (Next.js puts real src there)
+                     document.querySelectorAll('noscript').forEach(ns => {
+                       const html = ns.innerHTML || ns.textContent || '';
+                       if (html.includes('<img') && ns.parentElement) {
+                         const tmp = document.createElement('div');
+                         tmp.innerHTML = html;
+                         tmp.querySelectorAll('img').forEach(img => {
+                           const src = rewriteSrc(img.getAttribute('src') || img.getAttribute('data-src') || '');
+                           if (src) {
+                             // Find existing placeholder img in parent and replace its src
+                             const existingImg = ns.parentElement.querySelector('img');
+                             if (existingImg && (!existingImg.src || existingImg.naturalWidth === 0)) {
+                               existingImg.src = src;
+                               existingImg.loading = 'eager';
+                             } else {
+                               const newImg = document.createElement('img');
+                               newImg.src = src;
+                               newImg.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
+                               ns.parentElement.style.position = 'relative';
+                               ns.parentElement.appendChild(newImg);
+                             }
                            }
-                         }
+                         });
                        }
-                       // Force visible
+                     });
+
+                     document.querySelectorAll('img, source').forEach(el => {
+                       const lazySrc = el.getAttribute('data-src') || el.getAttribute('data-lazy') ||
+                                       el.getAttribute('data-original') || el.getAttribute('data-lazy-src') || el.getAttribute('data-img');
+                       if (lazySrc) {
+                         el.setAttribute('src', rewriteSrc(lazySrc));
+                       } else {
+                         const cur = el.getAttribute('src') || '';
+                         const fixed = rewriteSrc(cur);
+                         if (fixed !== cur) el.setAttribute('src', fixed);
+                       }
+                       const srcset = el.getAttribute('data-srcset') || el.getAttribute('srcset') || '';
+                       if (srcset) {
+                         const fixedSrcset = srcset.split(',').map(s => {
+                           const p = s.trim().split(/\s+/);
+                           return [rewriteSrc(p[0]), ...p.slice(1)].join(' ');
+                         }).join(', ');
+                         el.setAttribute('srcset', fixedSrcset);
+                       }
                        if (el.tagName === 'IMG') {
+                         el.loading = 'eager';
                          el.style.removeProperty('display');
                          el.style.removeProperty('visibility');
                          el.style.removeProperty('opacity');
-                         el.loading = 'eager';
-                         // If still no src, try data-src one more time
-                         if (!el.src || el.src === window.location.href) {
-                           const ds = el.getAttribute('data-src') || el.getAttribute('data-lazy');
-                           if (ds) el.src = rewriteSrc(ds);
-                         }
                        }
                      });
                    }
-
-                   // ── Override IntersectionObserver so lazy images load immediately ──
-                   (function() {
-                     const NativeIO = window.IntersectionObserver;
-                     window.IntersectionObserver = function(cb, opts) {
-                       const io = new NativeIO(cb, opts);
-                       const origObserve = io.observe.bind(io);
-                       io.observe = function(el) {
-                         // Immediately fire callback as if element is visible
-                         try { cb([{ isIntersecting: true, intersectionRatio: 1, target: el }], io); } catch(e) {}
-                         origObserve(el);
-                       };
-                       return io;
-                     };
-                     window.IntersectionObserver.prototype = NativeIO.prototype;
-                   })();
                    function savePagePrice() {
                      const spans = document.querySelectorAll('span, p, strong, b, h1, h2, h3');
                      for (const s of spans) {
