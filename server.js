@@ -627,38 +627,6 @@ app.use(
                      });
 
                      // 0b. ── Our Services: show only first 4 visible items ──
-                     document.querySelectorAll('h2').forEach(h2 => {
-                       const txt = (h2.innerText || h2.textContent || '').trim();
-
-                       // Our Services: show only first 4 visible items
-                       if (txt === 'Our Services') {
-                         const grid = h2.parentElement && h2.parentElement.querySelector('.flex.flex-row.flex-wrap');
-                         if (grid) {
-                           const items = grid.querySelectorAll(':scope > div.w-1\\/4');
-                           let shown = 0;
-                           items.forEach(item => {
-                             if (item.style.display === 'none' || item.style.getPropertyValue('display') === 'none') return;
-                             if (shown < 4) { shown++; }
-                             else { item.style.setProperty('display', 'none', 'important'); }
-                           });
-                         }
-                       }
-
-                       // "Sell Your Old Device Now" section — hide entire section
-                       if (/sell your old device/i.test(txt)) {
-                         let section = h2.closest('[class*="flex-col"]') || h2.parentElement;
-                         // Walk up to find the section wrapper
-                         for (let i = 0; i < 5; i++) {
-                           if (!section || section.tagName === 'BODY') break;
-                           if (section.querySelector('h2') === h2) {
-                             section.style.setProperty('display', 'none', 'important');
-                             break;
-                           }
-                           section = section.parentElement;
-                         }
-                       }
-                     });
-
                      // 1. Hide elements whose visible text starts with "Sell"
                      document.querySelectorAll('a, button, [role="button"], li, span, div, p, h1, h2, h3, h4, label').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
@@ -685,6 +653,38 @@ app.use(
                      document.querySelectorAll('a[href*="/sell"], a[href*="sell-"]').forEach(el => {
                        const wrapper = el.closest('li') || el.closest('nav > *') || el;
                        wrapper.style.setProperty('display', 'none', 'important');
+                     });
+
+                     // 4. ── Bottom navbar Sell button (mobile) — hide by href ──
+                     document.querySelectorAll('a[href="/sell-old-mobile-phone"]').forEach(el => {
+                       el.style.setProperty('display', 'none', 'important');
+                     });
+
+                     // 5. ── Our Services grid: show only first 4 visible items ──
+                     document.querySelectorAll('h2, h3').forEach(h => {
+                       if (/^our services$/i.test((h.innerText || h.textContent || '').trim())) {
+                         // Find the flex grid container sibling
+                         let grid = h.nextElementSibling;
+                         if (!grid) grid = h.parentElement && h.parentElement.querySelector('div.flex.flex-row.flex-wrap');
+                         if (grid) {
+                           let shown = 0;
+                           Array.from(grid.children).forEach(item => {
+                             // Skip already hidden items
+                             if (getComputedStyle(item).display === 'none') return;
+                             if (shown < 4) { shown++; }
+                             else { item.style.setProperty('display', 'none', 'important'); }
+                           });
+                         }
+                       }
+                     });
+
+                     // 6. ── Hide "Sell Your Old Device Now" section entirely ──
+                     document.querySelectorAll('h2, h3').forEach(h => {
+                       if (/sell your old device/i.test((h.innerText || h.textContent || '').trim())) {
+                         // Hide the closest section/div wrapper
+                         const section = h.closest('[style*="padding"]') || h.parentElement;
+                         if (section) section.style.setProperty('display', 'none', 'important');
+                       }
                      });
                    }
 
