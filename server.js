@@ -660,6 +660,15 @@ app.use(
                        el.style.setProperty('display', 'none', 'important');
                      });
 
+                     // 4b. ── Hide "Pay with EMI" section ──
+                     document.querySelectorAll('*').forEach(el => {
+                       const txt = (el.innerText || el.textContent || '').trim();
+                       if (/^pay with emi$/i.test(txt) && txt.length < 20) {
+                         const section = el.closest('[class*="flex-col"]') || el.parentElement;
+                         if (section) section.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+
                      // 5. ── Our Services grid: show only first 4 visible items ──
                      document.querySelectorAll('h2, h3').forEach(h => {
                        if (/^our services$/i.test((h.innerText || h.textContent || '').trim())) {
