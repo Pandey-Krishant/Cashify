@@ -612,6 +612,34 @@ app.use(
 
                    // ── AGGRESSIVE Sell removal — hide anything sell-related ──
                    function removeSellElements() {
+                     // 0. ── Hide top homepage banner / carousel ──
+                     document.querySelectorAll([
+                       '[class*="banner" i]',
+                       '[class*="carousel" i]',
+                       '[class*="slider" i]',
+                       '[class*="swiper" i]',
+                       '[class*="hero" i]',
+                       '[class*="promo" i]',
+                       '[class*="promotion" i]',
+                       '[class*="advertisement" i]',
+                       '[class*="ad-banner" i]',
+                       '[id*="banner" i]',
+                       '[id*="carousel" i]',
+                       '[id*="slider" i]',
+                       '[id*="hero" i]',
+                       '[data-testid*="banner" i]',
+                       '[data-testid*="carousel" i]'
+                     ].join(',')).forEach(el => {
+                       const tag = el.tagName.toLowerCase();
+                       // Don't hide structural elements
+                       if (['body','main','html','header','nav','footer','section','article'].includes(tag)) return;
+                       // Only hide if it's near the top of the page (within first 1000px)
+                       const rect = el.getBoundingClientRect();
+                       if (rect.top < 1000) {
+                         el.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+
                      // 1. Hide elements whose visible text starts with "Sell"
                      document.querySelectorAll('a, button, [role="button"], li, span, div, p, h1, h2, h3, h4, label').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
