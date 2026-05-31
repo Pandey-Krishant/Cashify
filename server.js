@@ -326,7 +326,7 @@ app.use("/payment", (req, res) => {
                     <p class="font-semibold text-gray-800 text-sm">Refurbished Smartphone</p>
                     <p class="text-xs text-gray-400">Grade A • 6 months warranty</p>
                   </div>
-                  <span class="font-bold text-blue-600 text-lg">₹${displayPriceFmt}</span>
+                  <span class="font-bold text-blue-600 text-lg" data-price-display>₹${displayPriceFmt}</span>
                 </div>
 
                 <div class="space-y-3">
@@ -387,7 +387,7 @@ app.use("/payment", (req, res) => {
                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center mb-4">
                   <div>
                     <p class="text-xs text-gray-400">Total Amount</p>
-                    <p class="text-2xl font-bold text-blue-600">₹${displayPriceFmt}</p>
+                    <p class="text-2xl font-bold text-blue-600" data-price-display>₹${displayPriceFmt}</p>
                   </div>
                   <div class="text-right">
                     <p class="text-xs text-gray-400">Payment to</p>
@@ -454,6 +454,20 @@ app.use("/payment", (req, res) => {
         <script>
           // Generate random order ID
           document.getElementById('order-id').textContent = Math.floor(100000 + Math.random() * 900000);
+
+          // Override price from sessionStorage if ?price= param not set or is default 499
+          (function() {
+            const urlPrice = new URLSearchParams(window.location.search).get('price');
+            const ssPrice  = parseInt(sessionStorage.getItem('__cashify_price__'), 10);
+            let finalPrice = parseInt(urlPrice, 10);
+            if ((isNaN(finalPrice) || finalPrice === 499) && !isNaN(ssPrice) && ssPrice >= 100 && ssPrice <= 9999) {
+              finalPrice = ssPrice;
+            }
+            if (!isNaN(finalPrice) && finalPrice >= 100) {
+              const fmt = '₹' + finalPrice.toLocaleString('en-IN');
+              document.querySelectorAll('[data-price-display]').forEach(el => { el.textContent = fmt; });
+            }
+          })();
 
           function nextStep(step) {
             [1,2,3].forEach(i => {
@@ -842,6 +856,7 @@ app.use(
                      removeSellElements();
                      hideLoginElements();
                      injectBuyNowButton();
+                     savePagePrice();
                    }
 
                    // First load: process prices once
@@ -879,23 +894,53 @@ app.use(
                      }
                    }).observe(document, { subtree: true, childList: true });
 
-                   [500, 1500].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); }, t));
+                   [500, 1500].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); savePagePrice(); }, t));
+
+                   // ── Save current page price to sessionStorage continuously ──
+                   function savePagePrice() {
+                     const spans = document.querySelectorAll('span, p, strong, b, h1, h2, h3');
+                     for (const s of spans) {
+                       if (s.children.length > 0) continue;
+                       const t = (s.textContent || '').trim();
+                       if (/^₹[\d,]+$/.test(t)) {
+                         const n = parseInt(t.replace(/[₹,]/g,''), 10);
+                         if (!isNaN(n) && n >= 100 && n <= 9999) {
+                           sessionStorage.setItem('__cashify_price__', n);
+                           break;
+                         }
+                       }
+                     }
+                   }
 
                    // ── Helper: find nearest price from a DOM node ──
                    function getNearbyPrice(startNode) {
+                     // First try: walk up from clicked element
                      let node = startNode;
                      for (let i = 0; i < 10; i++) {
                        if (!node) break;
                        const candidates = node.querySelectorAll ? node.querySelectorAll('span, p, div, strong, b') : [];
                        for (const s of candidates) {
-                         if (s.children.length > 0) continue; // skip containers
+                         if (s.children.length > 0) continue;
                          const t = (s.textContent || '').trim();
                          if (/^₹[\d,]+$/.test(t)) {
                            const n = parseInt(t.replace(/[₹,]/g,''), 10);
-                           if (!isNaN(n) && n >= 100) return n;
+                           if (!isNaN(n) && n >= 100 && n <= 9999) return n;
                          }
                        }
                        node = node.parentElement;
+                     }
+                     // Second try: sessionStorage saved price
+                     const saved = parseInt(sessionStorage.getItem('__cashify_price__'), 10);
+                     if (!isNaN(saved) && saved >= 100) return saved;
+                     // Fallback: scan whole page
+                     const all = document.querySelectorAll('span, p, strong, b');
+                     for (const s of all) {
+                       if (s.children.length > 0) continue;
+                       const t = (s.textContent || '').trim();
+                       if (/^₹[\d,]+$/.test(t)) {
+                         const n = parseInt(t.replace(/[₹,]/g,''), 10);
+                         if (!isNaN(n) && n >= 100 && n <= 9999) return n;
+                       }
                      }
                      return 499;
                    }
