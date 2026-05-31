@@ -732,6 +732,13 @@ app.use(
                (m, attr, q, path) => `${attr}${q}https://www.cashify.in${path}`);
              // Rewrite s3ng.cashify.in image URLs through our /img-proxy to avoid CORS
              text = text.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+             // Decode /_next/image?url=ENCODED → direct CDN URL (server-side)
+             text = text.replace(/\/_next\/image\?url=([^"'&\s]+)(?:[^"']*?)/g, (match, encoded) => {
+               try {
+                 const decoded = decodeURIComponent(encoded);
+                 return decoded.startsWith('http') ? decoded : 'https://www.cashify.in' + decoded;
+               } catch(e) { return match; }
+             });
 
              // 4. Inject aggressive client-side script
              const injectedScript = `
@@ -1043,6 +1050,17 @@ app.use(
                    function forceLoadImages() {
                      function rewriteSrc(src) {
                        if (!src) return src;
+                       // Decode /_next/image?url=... → direct URL
+                       if (src.includes('/_next/image')) {
+                         try {
+                           const u = new URL(src, window.location.origin);
+                           const inner = u.searchParams.get('url');
+                           if (inner) {
+                             const decoded = decodeURIComponent(inner);
+                             return decoded.startsWith('http') ? decoded : 'https://www.cashify.in' + decoded;
+                           }
+                         } catch(e) {}
+                       }
                        if (src.includes('s3ng.cashify.in')) return src.replace(/https?:\/\/s3ng\.cashify\.in/g, '/img-proxy');
                        if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy') && !src.startsWith('/_next')) return 'https://www.cashify.in' + src;
                        return src;
@@ -1057,11 +1075,13 @@ app.use(
                          tmp.querySelectorAll('img').forEach(img => {
                            const src = rewriteSrc(img.getAttribute('src') || img.getAttribute('data-src') || '');
                            if (src) {
-                             // Find existing placeholder img in parent and replace its src
                              const existingImg = ns.parentElement.querySelector('img');
-                             if (existingImg && (!existingImg.src || existingImg.naturalWidth === 0)) {
+                             if (existingImg) {
                                existingImg.src = src;
                                existingImg.loading = 'eager';
+                               existingImg.style.removeProperty('display');
+                               existingImg.style.removeProperty('visibility');
+                               existingImg.style.removeProperty('opacity');
                              } else {
                                const newImg = document.createElement('img');
                                newImg.src = src;
@@ -1082,7 +1102,7 @@ app.use(
                        } else {
                          const cur = el.getAttribute('src') || '';
                          const fixed = rewriteSrc(cur);
-                         if (fixed !== cur) el.setAttribute('src', fixed);
+                         if (fixed && fixed !== cur) el.setAttribute('src', fixed);
                        }
                        const srcset = el.getAttribute('data-srcset') || el.getAttribute('srcset') || '';
                        if (srcset) {
