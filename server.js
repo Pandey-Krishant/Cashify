@@ -707,29 +707,13 @@ app.use(
                        el.style.setProperty('display', 'none', 'important');
                      });
 
-                     // 4b. ── Replace "Pay with EMI" with "No EMI Available" (non-clickable) ──
+                     // 4b. ── Hide "Pay with EMI" / "No EMI Available" section completely ──
                      document.querySelectorAll('*').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
-                       if (/^pay with emi$/i.test(txt) && txt.length < 20) {
-                         // Replace text
-                         if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
-                           el.childNodes[0].nodeValue = 'No EMI Available';
-                         } else {
-                           el.innerText = 'No EMI Available';
-                         }
-                         // Disable clicks on this element and its parent container
-                         const section = el.closest('[class*="flex-col"]') || el.parentElement;
-                         if (section) {
-                           section.style.setProperty('pointer-events', 'none', 'important');
-                           section.style.setProperty('cursor', 'default', 'important');
-                           section.style.setProperty('opacity', '0.5', 'important');
-                         }
-                         // Remove any href/onclick from parent anchor
-                         const anchor = el.closest('a');
-                         if (anchor) {
-                           anchor.removeAttribute('href');
-                           anchor.style.setProperty('pointer-events', 'none', 'important');
-                         }
+                       if (/pay with emi|no emi available/i.test(txt) && txt.length < 30) {
+                         const section = el.closest('[class*="flex-col"]') || el.closest('[class*="flex"]') || el.parentElement;
+                         if (section) section.style.setProperty('display', 'none', 'important');
+                         el.style.setProperty('display', 'none', 'important');
                        }
                      });
 
