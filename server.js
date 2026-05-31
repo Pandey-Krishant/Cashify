@@ -628,19 +628,33 @@ app.use(
 
                      // 0b. ── Our Services: show only first 4 visible items ──
                      document.querySelectorAll('h2').forEach(h2 => {
-                       if ((h2.innerText || h2.textContent || '').trim() === 'Our Services') {
+                       const txt = (h2.innerText || h2.textContent || '').trim();
+
+                       // Our Services: show only first 4 visible items
+                       if (txt === 'Our Services') {
                          const grid = h2.parentElement && h2.parentElement.querySelector('.flex.flex-row.flex-wrap');
                          if (grid) {
                            const items = grid.querySelectorAll(':scope > div.w-1\\/4');
                            let shown = 0;
                            items.forEach(item => {
                              if (item.style.display === 'none' || item.style.getPropertyValue('display') === 'none') return;
-                             if (shown < 4) {
-                               shown++;
-                             } else {
-                               item.style.setProperty('display', 'none', 'important');
-                             }
+                             if (shown < 4) { shown++; }
+                             else { item.style.setProperty('display', 'none', 'important'); }
                            });
+                         }
+                       }
+
+                       // "Sell Your Old Device Now" section — hide entire section
+                       if (/sell your old device/i.test(txt)) {
+                         let section = h2.closest('[class*="flex-col"]') || h2.parentElement;
+                         // Walk up to find the section wrapper
+                         for (let i = 0; i < 5; i++) {
+                           if (!section || section.tagName === 'BODY') break;
+                           if (section.querySelector('h2') === h2) {
+                             section.style.setProperty('display', 'none', 'important');
+                             break;
+                           }
+                           section = section.parentElement;
                          }
                        }
                      });
