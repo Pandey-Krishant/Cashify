@@ -631,24 +631,12 @@ app.use(
                        '[data-testid*="carousel" i]'
                      ].join(',')).forEach(el => {
                        const tag = el.tagName.toLowerCase();
+                       // Don't hide structural elements
                        if (['body','main','html','header','nav','footer','section','article'].includes(tag)) return;
+                       // Only hide if it's near the top of the page (within first 1000px)
                        const rect = el.getBoundingClientRect();
                        if (rect.top < 1000) {
                          el.style.setProperty('display', 'none', 'important');
-                       }
-                     });
-
-                     // Hide s3ng.cashify.in banner images and their containers
-                     document.querySelectorAll('img[src*="s3ng.cashify.in"], img[data-src*="s3ng.cashify.in"]').forEach(img => {
-                       let el = img.parentElement;
-                       for (let i = 0; i < 8; i++) {
-                         if (!el || el === document.body) break;
-                         const cls = (typeof el.className === 'string') ? el.className : '';
-                         if (/rounded|card|banner|slide|item|wrap|gm/i.test(cls)) {
-                           el.style.setProperty('display', 'none', 'important');
-                           break;
-                         }
-                         el = el.parentElement;
                        }
                      });
 
