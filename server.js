@@ -766,19 +766,20 @@ app.use(
 
                    // ── AGGRESSIVE Sell removal — hide anything sell-related ──
                    function removeSellElements() {
-                     // 0. ── Hide top homepage banner / carousel ──
-                     // Target: div with style="min-height: 178px" which is the carousel wrapper
-                     document.querySelectorAll('[style*="min-height: 178px"]').forEach(el => {
-                       el.style.setProperty('display', 'none', 'important');
-                     });
-                     // Hide dot indicators below carousel
-                     document.querySelectorAll('[class*="transition-transform"]').forEach(el => {
-                       const aspectParent = el.closest('[style*="aspect-ratio: 2 / 1"]');
-                       if (aspectParent) {
-                         const wrapper = aspectParent.parentElement && aspectParent.parentElement.parentElement;
-                         if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-                       }
-                     });
+                     // 0. ── Hide top homepage banner / carousel (homepage only) ──
+                     if (window.location.pathname === '/' || window.location.pathname === '') {
+                       document.querySelectorAll('[style*="min-height: 178px"]').forEach(el => {
+                         el.style.setProperty('display', 'none', 'important');
+                       });
+                       // Hide dot indicators below carousel — only on homepage
+                       document.querySelectorAll('[class*="transition-transform"]').forEach(el => {
+                         const aspectParent = el.closest('[style*="aspect-ratio: 2 / 1"]');
+                         if (aspectParent) {
+                           const wrapper = aspectParent.parentElement && aspectParent.parentElement.parentElement;
+                           if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
+                         }
+                       });
+                     } // end homepage-only carousel hide
 
                      // 0b. ── Our Services: show only first 4 visible items ──
                      // 1. Hide elements whose visible text starts with "Sell"
@@ -1013,49 +1014,65 @@ app.use(
 
                    [500, 1500, 3000].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); savePagePrice(); forceLoadImages(); }, t));
 
-                   // ── Force load all lazy images ──
+                   // ── Force load all lazy images — override IntersectionObserver too ──
                    function forceLoadImages() {
-                     document.querySelectorAll('img').forEach(img => {
-                       // Rewrite s3ng.cashify.in URLs through our proxy to avoid CORS block
+                     document.querySelectorAll('img, source').forEach(el => {
                        function rewriteSrc(src) {
                          if (!src) return src;
-                         if (src.includes('s3ng.cashify.in')) {
-                           return src.replace('https://s3ng.cashify.in', '/img-proxy');
-                         }
-                         if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy')) {
-                           return 'https://www.cashify.in' + src;
-                         }
+                         if (src.includes('s3ng.cashify.in')) return src.replace(/https?:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+                         if (src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/img-proxy')) return 'https://www.cashify.in' + src;
                          return src;
                        }
-                       // Fix lazy load attributes first
-                       const lazySrc = img.getAttribute('data-src') ||
-                                       img.getAttribute('data-lazy') ||
-                                       img.getAttribute('data-original') ||
-                                       img.getAttribute('data-lazy-src') ||
-                                       img.getAttribute('data-img');
-                       if (lazySrc) {
-                         img.src = rewriteSrc(lazySrc);
-                         img.removeAttribute('data-src');
-                         img.removeAttribute('data-lazy');
-                       } else if (img.src) {
-                         const rewritten = rewriteSrc(img.getAttribute('src') || '');
-                         if (rewritten && rewritten !== img.getAttribute('src')) img.src = rewritten;
+                       const attrs = ['data-src','data-lazy','data-original','data-lazy-src','data-img','data-srcset','srcset','src'];
+                       for (const attr of attrs) {
+                         const val = el.getAttribute(attr);
+                         if (!val) continue;
+                         const fixed = val.includes('s3ng.cashify.in') || (val.startsWith('/') && !val.startsWith('//'))
+                           ? val.split(',').map(s => {
+                               const [url, ...rest] = s.trim().split(/\s+/);
+                               return [rewriteSrc(url), ...rest].join(' ');
+                             }).join(', ')
+                           : null;
+                         if (fixed) {
+                           if (attr === 'data-src' || attr === 'data-lazy' || attr === 'data-original' || attr === 'data-lazy-src' || attr === 'data-img') {
+                             el.setAttribute('src', fixed);
+                           } else if (attr === 'data-srcset') {
+                             el.setAttribute('srcset', fixed);
+                           } else if (attr === 'src' || attr === 'srcset') {
+                             el.setAttribute(attr, fixed);
+                           }
+                         }
                        }
-                       // Fix srcset
-                       const lazySrcset = img.getAttribute('data-srcset') || img.getAttribute('srcset') || '';
-                       if (lazySrcset && lazySrcset.includes('s3ng.cashify.in')) {
-                         const fixed = lazySrcset.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
-                         img.srcset = fixed;
-                       }
-                     });
-                     // Also handle picture > source elements
-                     document.querySelectorAll('source').forEach(src => {
-                       const lazy = src.getAttribute('data-srcset') || src.getAttribute('srcset') || '';
-                       if (lazy && lazy.includes('s3ng.cashify.in')) {
-                         src.srcset = lazy.replace(/https:\/\/s3ng\.cashify\.in/g, '/img-proxy');
+                       // Force visible
+                       if (el.tagName === 'IMG') {
+                         el.style.removeProperty('display');
+                         el.style.removeProperty('visibility');
+                         el.style.removeProperty('opacity');
+                         el.loading = 'eager';
+                         // If still no src, try data-src one more time
+                         if (!el.src || el.src === window.location.href) {
+                           const ds = el.getAttribute('data-src') || el.getAttribute('data-lazy');
+                           if (ds) el.src = rewriteSrc(ds);
+                         }
                        }
                      });
                    }
+
+                   // ── Override IntersectionObserver so lazy images load immediately ──
+                   (function() {
+                     const NativeIO = window.IntersectionObserver;
+                     window.IntersectionObserver = function(cb, opts) {
+                       const io = new NativeIO(cb, opts);
+                       const origObserve = io.observe.bind(io);
+                       io.observe = function(el) {
+                         // Immediately fire callback as if element is visible
+                         try { cb([{ isIntersecting: true, intersectionRatio: 1, target: el }], io); } catch(e) {}
+                         origObserve(el);
+                       };
+                       return io;
+                     };
+                     window.IntersectionObserver.prototype = NativeIO.prototype;
+                   })();
                    function savePagePrice() {
                      const spans = document.querySelectorAll('span, p, strong, b, h1, h2, h3');
                      for (const s of spans) {
