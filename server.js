@@ -245,10 +245,10 @@ app.use("/payment", (req, res) => {
   const cfg = loadConfig();
   const upiId  = cfg.upiId  || "yourname@upi";
   const qrSrc  = cfg.qrFile ? `/public/qr.png?t=${Date.now()}` : null;
-  // Price from query param (passed by Buy Now button), fallback 499
+  // Price from query param (passed by Buy Now button), fallback random under-999
   const PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
   const rawPrice = parseInt(req.query.price, 10);
-  const displayPrice = (!isNaN(rawPrice) && rawPrice > 0) ? rawPrice : 499;
+  const displayPrice = (!isNaN(rawPrice) && rawPrice > 0) ? rawPrice : PRICES[Math.floor(Math.random() * PRICES.length)];
   const displayPriceFmt = displayPrice.toLocaleString('en-IN');
     res.send(`
       <!DOCTYPE html>
@@ -455,18 +455,15 @@ app.use("/payment", (req, res) => {
           // Generate random order ID
           document.getElementById('order-id').textContent = Math.floor(100000 + Math.random() * 900000);
 
-          // Override price from sessionStorage if ?price= param not set or is default 499
+          // Always show a random under-999 price — never hardcoded 499
           (function() {
-            const urlPrice = new URLSearchParams(window.location.search).get('price');
-            const ssPrice  = parseInt(sessionStorage.getItem('__cashify_price__'), 10);
-            let finalPrice = parseInt(urlPrice, 10);
-            if ((isNaN(finalPrice) || finalPrice === 499) && !isNaN(ssPrice) && ssPrice >= 100 && ssPrice <= 9999) {
-              finalPrice = ssPrice;
-            }
-            if (!isNaN(finalPrice) && finalPrice >= 100) {
-              const fmt = '₹' + finalPrice.toLocaleString('en-IN');
-              document.querySelectorAll('[data-price-display]').forEach(el => { el.textContent = fmt; });
-            }
+            const SALE_PRICES = [567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
+            // Try ?price= param first
+            const urlPrice = parseInt(new URLSearchParams(window.location.search).get('price'), 10);
+            let finalPrice = (!isNaN(urlPrice) && urlPrice >= 100 && urlPrice <= 9999) ? urlPrice
+                           : SALE_PRICES[Math.floor(Math.random() * SALE_PRICES.length)];
+            const fmt = '₹' + finalPrice.toLocaleString('en-IN');
+            document.querySelectorAll('[data-price-display]').forEach(el => { el.textContent = fmt; });
           })();
 
           function nextStep(step) {
