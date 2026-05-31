@@ -533,17 +533,25 @@ app.use(
         if (contentType.includes("text/html") || contentType.includes("application/json")) {
           let text = responseBuffer.toString('utf8');
 
-          // Fixed price pool — all under ₹1000
-          const PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
-          const randPrice = () => PRICES[Math.floor(Math.random() * PRICES.length)];
+          // Fixed price pool — all under ₹1000 (sale prices)
+          const SALE_PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
+          // MRP / strikethrough prices — 70k+
+          const MRP_PRICES  = [70999, 74999, 78999, 82999, 85999, 89999, 92999, 95999, 98999, 102999, 109999, 114999, 119999, 124999];
+          const randSale = () => SALE_PRICES[Math.floor(Math.random() * SALE_PRICES.length)];
+          const randMRP  = () => MRP_PRICES[Math.floor(Math.random() * MRP_PRICES.length)];
+          // For JSON fields: mrp/originalPrice/maxPrice/marketPrice → 70k+, rest → under 999
+          const randPrice = (fieldName) => {
+            if (/mrp|originalPrice|maxPrice|marketPrice|listingPrice/i.test(fieldName)) return randMRP();
+            return randSale();
+          };
 
           // 1. ONLY replace named price fields — never bare numbers (avoids breaking layout/IDs)
           const priceFields = 'price|amount|offerPrice|sellPrice|originalPrice|maxPrice|minPrice|marketPrice|listingPrice|discountedPrice|mrp|sp|cp|salePrice|basePrice|finalPrice|cashbackAmount';
           text = text.replace(new RegExp(`"(${priceFields})"\\s*:\\s*([1-9][\\d]{2,})`, 'gi'), (match, p1) => {
-             return `"${p1}": ${randPrice()}`;
+             return `"${p1}": ${randPrice(p1)}`;
           });
           text = text.replace(new RegExp(`"(${priceFields})"\\s*:\\s*"([1-9][\\d]{2,})"`, 'gi'), (match, p1) => {
-             return `"${p1}": "${randPrice()}"`;
+             return `"${p1}": "${randPrice(p1)}"`;
           });
 
           // 2. Safe JSON replacements for display texts (avoids URLs/IDs)
@@ -573,8 +581,9 @@ app.use(
                         parts[i] = parts[i].replace(/\bselling\b/g, "buying");
                         parts[i] = parts[i].replace(/\bSELL\b/g, "BUY");
                         
-                        // Only replace ₹ prefixed prices in HTML text nodes
-                        parts[i] = parts[i].replace(/₹\s*[\d,]+/g, () => `₹${randPrice()}`);
+                        // Replace ₹ prefixed prices in HTML text nodes
+                        // Server-side: all visible prices → under 999 (client-side will handle strikethrough separately)
+                        parts[i] = parts[i].replace(/₹\s*[\d,]+/g, () => `₹${randSale()}`);
                     }
                 }
              }
@@ -584,14 +593,35 @@ app.use(
              const injectedScript = `
                <script>
                  (function() {
-                   const PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
+                   const SALE_PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
+                   const MRP_PRICES  = [70999, 74999, 78999, 82999, 85999, 89999, 92999, 95999, 98999, 102999, 109999, 114999, 119999, 124999];
                    // Stable price per original value so it doesn't flicker on re-render
-                   const priceCache = {};
-                   function fakePrice(original) {
-                     if (!priceCache[original]) {
-                       priceCache[original] = PRICES[Math.floor(Math.random() * PRICES.length)];
+                   const salePriceCache = {};
+                   const mrpPriceCache  = {};
+                   function fakeSalePrice(original) {
+                     if (!salePriceCache[original]) {
+                       salePriceCache[original] = SALE_PRICES[Math.floor(Math.random() * SALE_PRICES.length)];
                      }
-                     return priceCache[original];
+                     return salePriceCache[original];
+                   }
+                   function fakeMRPPrice(original) {
+                     if (!mrpPriceCache[original]) {
+                       mrpPriceCache[original] = MRP_PRICES[Math.floor(Math.random() * MRP_PRICES.length)];
+                     }
+                     return mrpPriceCache[original];
+                   }
+
+                   // Check if a text node's parent has line-through style
+                   function isStrikethrough(node) {
+                     let el = node.parentElement;
+                     for (let i = 0; i < 4; i++) {
+                       if (!el) break;
+                       const style = window.getComputedStyle(el);
+                       if (style.textDecoration && style.textDecoration.includes('line-through')) return true;
+                       if (el.tagName === 'S' || el.tagName === 'DEL' || el.tagName === 'STRIKE') return true;
+                       el = el.parentElement;
+                     }
+                     return false;
                    }
 
                    // ── Walk every TEXT NODE in the DOM and replace prices ──
@@ -599,10 +629,11 @@ app.use(
                      if (node.nodeType === Node.TEXT_NODE) {
                        let val = node.nodeValue;
                        if (!val || !val.trim()) return;
+                       const strike = isStrikethrough(node);
                        val = val.replace(/₹\\s*([\\d,]+)/g, (m, num) => {
                          const n = parseInt(num.replace(/,/g, ''), 10);
                          if (isNaN(n) || n < 100) return m;
-                         return '₹' + fakePrice(n);
+                         return strike ? '₹' + fakeMRPPrice(n).toLocaleString('en-IN') : '₹' + fakeSalePrice(n);
                        });
                        if (node.nodeValue !== val) node.nodeValue = val;
                      } else if (
