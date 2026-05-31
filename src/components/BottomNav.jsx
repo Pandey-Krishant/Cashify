@@ -25,23 +25,20 @@ const BottomNav = () => (
             </span>
           </a>
         ) : (
-          <a
+          <span
             key={item.label}
-            href="#"
             className="flex flex-col items-center justify-center flex-1 opacity-40 select-none"
-            style={{ touchAction: 'none', userSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
-            onClick={block}
-            onTouchStart={block}
-            onTouchEnd={block}
-            onTouchMove={block}
-            onPointerDown={block}
-            onPointerUp={block}
-            aria-disabled="true"
-            tabIndex={-1}
+            style={{
+              pointerEvents: 'none',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              cursor: 'default',
+            }}
           >
-            <img src={item.img} alt={item.label} className="h-7 w-7" draggable="false" />
-            <span className="text-xs mt-1 text-gray-400">{item.label}</span>
-          </a>
+            <img src={item.img} alt={item.label} className="h-7 w-7" draggable="false" style={{ pointerEvents: 'none' }} />
+            <span className="text-xs mt-1 text-gray-400" style={{ pointerEvents: 'none' }}>{item.label}</span>
+          </span>
         );
       })}
     </div>
