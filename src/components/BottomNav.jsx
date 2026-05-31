@@ -6,9 +6,10 @@ const navItems = [
   { label: 'Profile', href: '/user/profile', img: 'https://s3ng.cashify.in/builder/1203bcd4e62f47b5b022f9e7d67c8ad9.webp', active: false },
 ];
 
-const blockEvent = (e) => {
+const block = (e) => {
   e.preventDefault();
   e.stopPropagation();
+  return false;
 };
 
 const BottomNav = () => (
@@ -24,19 +25,23 @@ const BottomNav = () => (
             </span>
           </a>
         ) : (
-          <div
+          <a
             key={item.label}
+            href="#"
             className="flex flex-col items-center justify-center flex-1 opacity-40 select-none"
-            style={{ pointerEvents: 'none', touchAction: 'none', userSelect: 'none' }}
-            onClick={blockEvent}
-            onTouchStart={blockEvent}
-            onTouchEnd={blockEvent}
-            onTouchMove={blockEvent}
+            style={{ touchAction: 'none', userSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+            onClick={block}
+            onTouchStart={block}
+            onTouchEnd={block}
+            onTouchMove={block}
+            onPointerDown={block}
+            onPointerUp={block}
             aria-disabled="true"
+            tabIndex={-1}
           >
             <img src={item.img} alt={item.label} className="h-7 w-7" draggable="false" />
             <span className="text-xs mt-1 text-gray-400">{item.label}</span>
-          </div>
+          </a>
         );
       })}
     </div>
