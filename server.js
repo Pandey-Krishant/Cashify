@@ -422,8 +422,8 @@ app.use("/payment", (req, res) => {
                     <span class="text-[10px] font-semibold text-purple-600">PhonePe</span>
                   </a>
                   <a href="#" onclick="openUPI('gpay');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100 bg-white p-1">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png" class="w-full h-full object-contain">
+                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100">
+                      <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-pay-icon.png" class="w-full h-full object-cover">
                     </div>
                     <span class="text-[10px] font-semibold text-blue-600">GPay</span>
                   </a>
@@ -434,14 +434,14 @@ app.use("/payment", (req, res) => {
                     <span class="text-[10px] font-semibold text-blue-500">Paytm</span>
                   </a>
                   <a href="#" onclick="openUPI('bhim');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100 bg-white p-1">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/BHIM_logo.png/480px-BHIM_logo.png" class="w-full h-full object-contain">
+                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100">
+                      <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/bhim-upi-icon.png" class="w-full h-full object-cover">
                     </div>
                     <span class="text-[10px] font-semibold text-orange-600">BHIM</span>
                   </a>
                   <a href="#" onclick="openUPI('upi');return false;" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
-                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100 bg-white p-1">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/480px-UPI-Logo-vector.svg.png" class="w-full h-full object-contain">
+                    <div class="w-12 h-12 rounded-xl shadow-md overflow-hidden border border-gray-100">
+                      <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/upi-icon.png" class="w-full h-full object-cover">
                     </div>
                     <span class="text-[10px] font-semibold text-gray-600">Any UPI</span>
                   </a>
