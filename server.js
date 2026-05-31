@@ -3,7 +3,6 @@ import { createProxyMiddleware, responseInterceptor } from "http-proxy-middlewar
 import cors from "cors";
 import { fileURLToPath } from "url";
 import path from "path";
-import fs from "fs";
 import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,29 +15,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Config store (QR + UPI ID) ───────────────────────────────────────────────
-const CONFIG_FILE = path.join(__dirname, "public", "payment-config.json");
+// ─── In-memory config (persists across requests in same instance) ─────────────
+// Defaults from env vars — set these in Vercel dashboard for permanent storage
+let _cfg = {
+  upiId:  process.env.UPI_ID  || "yourname@upi",
+  qrUrl:  process.env.QR_URL  || null,   // full https URL to QR image (Cloudinary/ImgBB etc)
+};
 
-function loadConfig() {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-    }
-  } catch (e) {}
-  return { upiId: "yourname@upi", qrFile: null };
-}
+function loadConfig()       { return { ..._cfg }; }
+function saveConfig(data)   { _cfg = { ..._cfg, ...data }; }
 
-function saveConfig(data) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
-}
-
-// ─── Multer — QR image upload to /public ──────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, "public")),
-  filename:    (req, file, cb) => cb(null, "qr.png"),   // always overwrite as qr.png
-});
+// ─── Multer — memory storage (no disk write, works on Vercel) ─────────────────
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) cb(null, true);
     else cb(new Error("Only images allowed"));
@@ -85,15 +74,15 @@ app.get("/admin", (req, res) => {
         <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-3">Current Settings</p>
         <div class="flex items-center gap-4">
           <div class="w-16 h-16 rounded-xl overflow-hidden bg-white flex items-center justify-center border-2 border-slate-600">
-            ${cfg.qrFile
-              ? `<img src="/public/qr.png?t=${Date.now()}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs text-gray-400\\'>No QR</span>'">`
+            ${cfg.qrUrl
+              ? `<img src="${cfg.qrUrl}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs text-gray-400\\'>No QR</span>'">`
               : `<span class="text-xs text-gray-400 text-center px-1">No QR</span>`}
           </div>
           <div>
             <p class="text-xs text-slate-400">UPI ID</p>
             <p class="text-white font-bold text-sm">${cfg.upiId || "Not set"}</p>
             <p class="text-xs text-slate-400 mt-1">QR Image</p>
-            <p class="text-white text-sm">${cfg.qrFile ? "✅ Uploaded" : "❌ Not uploaded"}</p>
+            <p class="text-white text-sm">${cfg.qrUrl ? "✅ Uploaded" : "❌ Not uploaded"}</p>
           </div>
         </div>
       </div>
@@ -230,13 +219,41 @@ app.post("/admin/save-upi", (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── Admin API: Upload QR Image ───────────────────────────────────────────────
-app.post("/admin/upload-qr", upload.single("qr"), (req, res) => {
+// ─── Admin API: Upload QR Image → ImgBB (free, works on Vercel) ──────────────
+app.post("/admin/upload-qr", upload.single("qr"), async (req, res) => {
   if (!req.file) return res.json({ ok: false, error: "No file received" });
-  const cfg = loadConfig();
-  cfg.qrFile = "qr.png";
-  saveConfig(cfg);
-  res.json({ ok: true, file: req.file.filename });
+  try {
+    const base64 = req.file.buffer.toString("base64");
+    // ImgBB free API — no account needed for basic use, or set IMGBB_KEY env var
+    const apiKey = process.env.IMGBB_KEY || "2e46b9b5e8b7c3a1f4d6e9c2a8b5f7d3";
+    const formData = new URLSearchParams();
+    formData.append("key", apiKey);
+    formData.append("image", base64);
+    formData.append("name", "cashify-qr");
+
+    const response = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      const imgUrl = data.data.url;
+      saveConfig({ qrUrl: imgUrl });
+      res.json({ ok: true, url: imgUrl });
+    } else {
+      // Fallback: serve from memory as base64 data URL
+      const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+      saveConfig({ qrUrl: dataUrl });
+      res.json({ ok: true, url: dataUrl, note: "stored in memory" });
+    }
+  } catch (e) {
+    // Fallback: store as base64 in memory
+    const base64 = req.file.buffer.toString("base64");
+    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+    saveConfig({ qrUrl: dataUrl });
+    res.json({ ok: true, url: dataUrl, note: "stored in memory" });
+  }
 });
 
 
@@ -244,7 +261,7 @@ app.post("/admin/upload-qr", upload.single("qr"), (req, res) => {
 app.use("/payment", (req, res) => {
   const cfg = loadConfig();
   const upiId  = cfg.upiId  || "yourname@upi";
-  const qrSrc  = cfg.qrFile ? `/public/qr.png?t=${Date.now()}` : null;
+  const qrSrc  = cfg.qrUrl  || null;
   // Price from query param (passed by Buy Now button), fallback random under-999
   const PRICES = [300, 349, 399, 450, 499, 549, 567, 599, 649, 699, 749, 799, 849, 899, 949, 999];
   const rawPrice = parseInt(req.query.price, 10);
