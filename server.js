@@ -626,6 +626,25 @@ app.use(
                        }
                      });
 
+                     // 0b. ── Our Services: show only first 4 visible items ──
+                     document.querySelectorAll('h2').forEach(h2 => {
+                       if ((h2.innerText || h2.textContent || '').trim() === 'Our Services') {
+                         const grid = h2.parentElement && h2.parentElement.querySelector('.flex.flex-row.flex-wrap');
+                         if (grid) {
+                           const items = grid.querySelectorAll(':scope > div.w-1\\/4');
+                           let shown = 0;
+                           items.forEach(item => {
+                             if (item.style.display === 'none' || item.style.getPropertyValue('display') === 'none') return;
+                             if (shown < 4) {
+                               shown++;
+                             } else {
+                               item.style.setProperty('display', 'none', 'important');
+                             }
+                           });
+                         }
+                       }
+                     });
+
                      // 1. Hide elements whose visible text starts with "Sell"
                      document.querySelectorAll('a, button, [role="button"], li, span, div, p, h1, h2, h3, h4, label').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
