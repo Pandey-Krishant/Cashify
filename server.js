@@ -1032,6 +1032,37 @@ app.use(
                        }
                      });
                    }
+
+                   // ── Block non-Home bottom nav items ──
+                   function blockBottomNav() {
+                     // Cashify bottom nav: fixed bar at bottom with nav items
+                     const selectors = [
+                       'nav a', 'nav [role="button"]',
+                       '[class*="bottom"] a', '[class*="bottom"] [role="button"]',
+                       '[class*="tabbar"] a', '[class*="tabbar"] [role="button"]',
+                       '[class*="tab-bar"] a', '[class*="tab-bar"] [role="button"]',
+                       '[class*="footer-nav"] a', '[class*="bottomNav"] a',
+                       '[class*="BottomNav"] a', '[class*="bottom-nav"] a',
+                     ];
+                     document.querySelectorAll(selectors.join(',')).forEach(el => {
+                       const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
+                       const href = (el.getAttribute('href') || '').toLowerCase();
+                       // Keep Home only
+                       const isHome = txt === 'home' || href === '/' || href === '';
+                       if (!isHome) {
+                         el.style.setProperty('pointer-events', 'none', 'important');
+                         el.style.setProperty('touch-action', 'none', 'important');
+                         el.style.setProperty('opacity', '0.4', 'important');
+                         el.removeAttribute('href');
+                         el.setAttribute('data-blocked', '1');
+                       }
+                     });
+                   }
+
+                   // Run blockBottomNav on load and mutations
+                   blockBottomNav();
+                   document.addEventListener('DOMContentLoaded', blockBottomNav);
+                   [300, 800, 1500, 3000].forEach(t => setTimeout(blockBottomNav, t));
                  })();
                </script>
              </head>
