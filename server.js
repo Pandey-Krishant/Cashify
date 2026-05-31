@@ -412,24 +412,39 @@ app.use("/payment", (req, res) => {
                   </div>
                 </div>
 
-                <!-- Apps row -->
-                <div class="flex justify-center gap-4 mb-5">
-                  <div class="flex flex-col items-center gap-1 opacity-70">
-                    <div class="w-10 h-10 bg-white rounded-xl shadow flex items-center justify-center text-xl">🟢</div>
-                    <span class="text-xs text-gray-400">PhonePe</span>
-                  </div>
-                  <div class="flex flex-col items-center gap-1 opacity-70">
-                    <div class="w-10 h-10 bg-white rounded-xl shadow flex items-center justify-center text-xl">🔵</div>
-                    <span class="text-xs text-gray-400">GPay</span>
-                  </div>
-                  <div class="flex flex-col items-center gap-1 opacity-70">
-                    <div class="w-10 h-10 bg-white rounded-xl shadow flex items-center justify-center text-xl">🟣</div>
-                    <span class="text-xs text-gray-400">Paytm</span>
-                  </div>
-                  <div class="flex flex-col items-center gap-1 opacity-70">
-                    <div class="w-10 h-10 bg-white rounded-xl shadow flex items-center justify-center text-xl">🔴</div>
-                    <span class="text-xs text-gray-400">BHIM</span>
-                  </div>
+                <!-- Apps row — clickable UPI deep links -->
+                <p class="text-xs text-center text-gray-400 mb-2">Pay directly via app</p>
+                <div class="flex justify-center gap-3 mb-5" id="upi-apps-row">
+                  <a id="link-phonepe" href="#" onclick="openUPI('phonepe')" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border border-gray-100">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/PhonePe_Logo.png/240px-PhonePe_Logo.png" class="w-9 h-9 object-contain" onerror="this.parentElement.innerHTML='🟢'">
+                    </div>
+                    <span class="text-xs font-semibold text-purple-600">PhonePe</span>
+                  </a>
+                  <a id="link-gpay" href="#" onclick="openUPI('gpay')" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border border-gray-100">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/240px-Google_Pay_Logo.svg.png" class="w-9 h-9 object-contain" onerror="this.parentElement.innerHTML='🔵'">
+                    </div>
+                    <span class="text-xs font-semibold text-blue-600">GPay</span>
+                  </a>
+                  <a id="link-paytm" href="#" onclick="openUPI('paytm')" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border border-gray-100">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/240px-Paytm_Logo_%28standalone%29.svg.png" class="w-9 h-9 object-contain" onerror="this.parentElement.innerHTML='🟣'">
+                    </div>
+                    <span class="text-xs font-semibold text-blue-500">Paytm</span>
+                  </a>
+                  <a id="link-bhim" href="#" onclick="openUPI('bhim')" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border border-gray-100">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/BHIM_logo.png/240px-BHIM_logo.png" class="w-9 h-9 object-contain" onerror="this.parentElement.innerHTML='🔴'">
+                    </div>
+                    <span class="text-xs font-semibold text-orange-600">BHIM</span>
+                  </a>
+                  <a id="link-upi" href="#" onclick="openUPI('upi')" class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border border-gray-100">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/240px-UPI-Logo-vector.svg.png" class="w-9 h-9 object-contain" onerror="this.parentElement.innerHTML='💳'">
+                    </div>
+                    <span class="text-xs font-semibold text-gray-600">Any UPI</span>
+                  </a>
                 </div>
 
                 <div class="flex gap-3">
@@ -481,7 +496,45 @@ app.use("/payment", (req, res) => {
                            : SALE_PRICES[Math.floor(Math.random() * SALE_PRICES.length)];
             const fmt = '₹' + finalPrice.toLocaleString('en-IN');
             document.querySelectorAll('[data-price-display]').forEach(el => { el.textContent = fmt; });
+            // Store for UPI deep link
+            window.__payAmount = finalPrice;
           })();
+
+          // UPI deep link opener
+          function openUPI(app) {
+            const upiId = document.getElementById('upi-id').textContent.trim();
+            const amount = window.__payAmount || 699;
+            const note = encodeURIComponent('Cashify Payment');
+            const name = encodeURIComponent('Cashify Store');
+
+            // Standard UPI intent URL (works on Android for any UPI app)
+            const upiUrl = \`upi://pay?pa=\${encodeURIComponent(upiId)}&pn=\${name}&am=\${amount}&cu=INR&tn=\${note}\`;
+
+            // App-specific deep links
+            const links = {
+              phonepe: \`phonepe://pay?pa=\${encodeURIComponent(upiId)}&pn=\${name}&am=\${amount}&cu=INR&tn=\${note}\`,
+              gpay:    \`tez://upi/pay?pa=\${encodeURIComponent(upiId)}&pn=\${name}&am=\${amount}&cu=INR&tn=\${note}\`,
+              paytm:   \`paytmmp://pay?pa=\${encodeURIComponent(upiId)}&pn=\${name}&am=\${amount}&cu=INR&tn=\${note}\`,
+              bhim:    \`upi://pay?pa=\${encodeURIComponent(upiId)}&pn=\${name}&am=\${amount}&cu=INR&tn=\${note}&app=bhim\`,
+              upi:     upiUrl,
+            };
+
+            const deepLink = links[app] || upiUrl;
+
+            // Try app-specific link, fallback to generic upi://
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            iframe.src = deepLink;
+
+            // After 1.5s if app didn't open, try generic upi:// as fallback
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+              if (app !== 'upi') {
+                window.location.href = upiUrl;
+              }
+            }, 1500);
+          }
 
           function nextStep(step) {
             [1,2,3].forEach(i => {
