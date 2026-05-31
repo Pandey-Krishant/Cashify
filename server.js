@@ -808,10 +808,33 @@ app.use(
                      // 6. ── Hide "Sell Your Old Device Now" section entirely ──
                      document.querySelectorAll('h2, h3').forEach(h => {
                        if (/sell your old device/i.test((h.innerText || h.textContent || '').trim())) {
-                         // Hide the closest section/div wrapper
                          const section = h.closest('[style*="padding"]') || h.parentElement;
                          if (section) section.style.setProperty('display', 'none', 'important');
                        }
+                     });
+
+                     // 7. ── Hide EMI / GOLD / Bajaj / Snapmint / Instacred sections ──
+                     document.querySelectorAll('*').forEach(el => {
+                       const txt = (el.innerText || el.textContent || '').trim();
+                       // Hide EMI available rows
+                       if (/emi available/i.test(txt) && txt.length < 120) {
+                         const block = el.closest('[class*="emi" i]') || el.closest('[class*="finance" i]') || el.parentElement;
+                         if (block) block.style.setProperty('display', 'none', 'important');
+                       }
+                       // Hide GOLD badge/banner
+                       if (/get it for.*gold|with gold/i.test(txt) && txt.length < 80) {
+                         const block = el.closest('[class*="gold" i]') || el.closest('[class*="banner" i]') || el.parentElement;
+                         if (block) block.style.setProperty('display', 'none', 'important');
+                       }
+                       // Hide Bajaj / Snapmint / Instacred lines
+                       if (/(bajaj|snapmint|instacred)/i.test(txt) && txt.length < 120) {
+                         const block = el.closest('[class*="emi" i]') || el.closest('[class*="finance" i]') || el.parentElement;
+                         if (block) block.style.setProperty('display', 'none', 'important');
+                       }
+                     });
+                     // Also hide by class/id patterns
+                     document.querySelectorAll('[class*="emi" i],[class*="gold-banner" i],[class*="goldBanner" i],[class*="finance" i],[class*="snapmint" i],[class*="bajaj" i],[class*="instacred" i]').forEach(el => {
+                       el.style.setProperty('display', 'none', 'important');
                      });
                    }
 
