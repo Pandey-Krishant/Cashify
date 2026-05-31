@@ -807,18 +807,9 @@ app.use(
 
                    // ── AGGRESSIVE Sell removal — hide anything sell-related ──
                    function removeSellElements() {
-                     // 0. ── Hide top homepage banner / carousel ──
-                     // Target: div with style="min-height: 178px" which is the carousel wrapper
+                     // 0. ── Hide top homepage banner ONLY ──
                      document.querySelectorAll('[style*="min-height: 178px"]').forEach(el => {
                        el.style.setProperty('display', 'none', 'important');
-                     });
-                     // Hide dot indicators below carousel
-                     document.querySelectorAll('[class*="transition-transform"]').forEach(el => {
-                       const aspectParent = el.closest('[style*="aspect-ratio: 2 / 1"]');
-                       if (aspectParent) {
-                         const wrapper = aspectParent.parentElement && aspectParent.parentElement.parentElement;
-                         if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-                       }
                      });
 
                      // 0b. ── Our Services: show only first 4 visible items ──
