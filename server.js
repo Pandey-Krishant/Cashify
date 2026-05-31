@@ -724,7 +724,15 @@ app.use(
              }
              text = parts.join('');
 
-             // 3b. Fix relative image src/srcset → absolute cashify.in URLs
+             // Force desktop viewport — override cashify.in's mobile viewport
+             text = text.replace(
+               /<meta\s+name=["']viewport["'][^>]*>/gi,
+               '<meta name="viewport" content="width=1280, initial-scale=0.35, maximum-scale=2.0, user-scalable=yes">'
+             );
+             // If no viewport tag exists, add one
+             if (!text.includes('name="viewport"') && !text.includes("name='viewport'")) {
+               text = text.replace('<head>', '<head><meta name="viewport" content="width=1280, initial-scale=0.35, maximum-scale=2.0, user-scalable=yes">');
+             }
              text = text.replace(/(<img\b[^>]*?\s)(src|srcset)=(["'])(?!https?:\/\/|data:|\/\/)(\/[^"'>\s]+)/gi,
                (m, pre, attr, q, path) => `${pre}${attr}=${q}https://www.cashify.in${path}`);
              // Also fix lazy-load data-src attributes
