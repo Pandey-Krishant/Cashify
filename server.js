@@ -813,25 +813,35 @@ app.use(
                      });
 
                      // 0b. ── Our Services: show only first 4 visible items ──
-                     // 1. Hide elements whose visible text starts with "Sell"
-                     document.querySelectorAll('a, button, [role="button"], li, span, div, p, h1, h2, h3, h4, label').forEach(el => {
+                     // 1. Hide elements whose visible text starts with "Sell" — skip if has images
+                     document.querySelectorAll('a, button, [role="button"], li, span').forEach(el => {
                        const txt = (el.innerText || el.textContent || '').trim();
-                       if (txt.length < 60 && /^sell\\b/i.test(txt)) {
+                       if (txt.length < 60 && /^sell\\b/i.test(txt) && el.querySelectorAll('img').length === 0) {
                          const wrapper =
                            el.closest('li') ||
                            el.closest('[class*="sell" i]') ||
                            el.closest('[data-testid*="sell" i]') ||
                            el;
-                         wrapper.style.setProperty('display', 'none', 'important');
+                         // Only hide if wrapper has no images
+                         if (wrapper.querySelectorAll('img').length === 0) {
+                           wrapper.style.setProperty('display', 'none', 'important');
+                         }
                        }
                      });
 
-                     // 2. Hide elements with sell-related class names
+                     // 2. Hide elements with sell-related class names — only small nav/button elements
                      document.querySelectorAll('[class*="sell" i], [id*="sell" i], [data-testid*="sell" i], [href*="/sell" i]').forEach(el => {
-                       // Don't hide if it's a large container (body/main/section)
                        const tag = el.tagName.toLowerCase();
-                       if (!['body','main','section','article','html'].includes(tag)) {
+                       // Only hide small interactive elements, never containers with images
+                       if (!['body','main','section','article','html','div','figure','picture','span'].includes(tag)) {
                          el.style.setProperty('display', 'none', 'important');
+                       }
+                       // For divs/spans — only hide if they are tiny (nav items, buttons)
+                       if (['div','span'].includes(tag)) {
+                         const txt = (el.innerText || el.textContent || '').trim();
+                         if (txt.length < 30 && !/₹/.test(txt) && el.querySelectorAll('img').length === 0) {
+                           el.style.setProperty('display', 'none', 'important');
+                         }
                        }
                      });
 
