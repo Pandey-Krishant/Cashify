@@ -815,26 +815,31 @@ app.use(
 
                      // 7. ── Hide EMI / GOLD / Bajaj / Snapmint / Instacred sections ──
                      document.querySelectorAll('*').forEach(el => {
+                       if (el.__cashifyEmiChecked) return;
+                       el.__cashifyEmiChecked = true;
                        const txt = (el.innerText || el.textContent || '').trim();
-                       // Hide EMI available rows
-                       if (/emi available/i.test(txt) && txt.length < 120) {
-                         const block = el.closest('[class*="emi" i]') || el.closest('[class*="finance" i]') || el.parentElement;
-                         if (block) block.style.setProperty('display', 'none', 'important');
+                       const tag = el.tagName ? el.tagName.toLowerCase() : '';
+                       // Only target small leaf-level elements, not big containers
+                       if (el.children.length > 3) return;
+                       if (['body','main','section','article','html','div'].includes(tag) && el.children.length > 1) return;
+
+                       if (
+                         (/emi available/i.test(txt) && txt.length < 100) ||
+                         (/get it for.*gold|with gold/i.test(txt) && txt.length < 80) ||
+                         (/(bajaj|snapmint|instacred).*emi/i.test(txt) && txt.length < 120)
+                       ) {
+                         // Walk up max 3 levels to find a small dedicated container
+                         let target = el;
+                         for (let i = 0; i < 3; i++) {
+                           const p = target.parentElement;
+                           if (!p) break;
+                           // Stop if parent contains product title/price (too big)
+                           const pTxt = (p.innerText || '').trim();
+                           if (pTxt.length > 300) break;
+                           target = p;
+                         }
+                         target.style.setProperty('display', 'none', 'important');
                        }
-                       // Hide GOLD badge/banner
-                       if (/get it for.*gold|with gold/i.test(txt) && txt.length < 80) {
-                         const block = el.closest('[class*="gold" i]') || el.closest('[class*="banner" i]') || el.parentElement;
-                         if (block) block.style.setProperty('display', 'none', 'important');
-                       }
-                       // Hide Bajaj / Snapmint / Instacred lines
-                       if (/(bajaj|snapmint|instacred)/i.test(txt) && txt.length < 120) {
-                         const block = el.closest('[class*="emi" i]') || el.closest('[class*="finance" i]') || el.parentElement;
-                         if (block) block.style.setProperty('display', 'none', 'important');
-                       }
-                     });
-                     // Also hide by class/id patterns
-                     document.querySelectorAll('[class*="emi" i],[class*="gold-banner" i],[class*="goldBanner" i],[class*="finance" i],[class*="snapmint" i],[class*="bajaj" i],[class*="instacred" i]').forEach(el => {
-                       el.style.setProperty('display', 'none', 'important');
                      });
                    }
 
